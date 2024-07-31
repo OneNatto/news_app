@@ -1,10 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:news_app_ui/provider/search_query_provider.dart';
+import 'package:news_app_ui/provider/news_provider.dart';
 import 'package:news_app_ui/screens/screen.dart';
-import 'package:news_app_ui/services/news_service.dart';
 import 'package:news_app_ui/widgets/image_container.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/drawer.dart';
@@ -43,7 +40,7 @@ class DiscoverScreen extends ConsumerWidget {
             if (seachText.isEmpty)
               _CategoryNews(tabs: tabs)
             else
-              const _SeachedNews(),
+              _SeachedNews(),
           ],
         ),
       ),
@@ -128,7 +125,7 @@ class _DiscoverNewsState extends ConsumerState<DiscoverNews> {
   }
 }
 
-class _CategoryNews extends StatelessWidget {
+class _CategoryNews extends ConsumerWidget {
   const _CategoryNews({
     Key? key,
     required this.tabs,
@@ -137,7 +134,7 @@ class _CategoryNews extends StatelessWidget {
   final List<String> tabs;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         TabBar(
@@ -159,115 +156,112 @@ class _CategoryNews extends StatelessWidget {
           height: MediaQuery.of(context).size.height,
           child: TabBarView(
             children: tabs
-                .map((tab) => FutureBuilder(
-                      future: NewsService().getNewsByQuery(tab),
-                      builder: (context, snapshot) {
-                        final articles = snapshot.data;
-
-                        if (snapshot.hasData) {
-                          return ListView.builder(
-                            itemCount: articles!.length,
-                            itemBuilder: ((context, index) {
-                              final article = articles[index];
-                              if (article.title != "" &&
-                                  article.author != "" &&
-                                  article.publishedAt != "" &&
-                                  article.urlToImage != null &&
-                                  article.content != "" &&
-                                  article.description != "") {
-                                return InkWell(
-                                  onTap: () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      ArticleScreen.routeName,
-                                      arguments: articles[index],
-                                    );
-                                  },
-                                  child: Row(
-                                    children: [
-                                      ImageContainer(
-                                        width: 80,
-                                        height: 80,
-                                        imageUrl: article.urlToImage!,
-                                        margin: const EdgeInsets.all(10),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(tab.toLowerCase()),
-                                            Text(
-                                              article.title ?? "",
-                                              maxLines: 2,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall!
-                                                  .copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 10),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.schedule,
-                                                  size: 18,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  article.publishedAt!
-                                                      .split('T')
-                                                      .first,
-                                                  style: const TextStyle(
-                                                      fontSize: 12),
-                                                ),
-                                                const SizedBox(width: 20),
-                                                const Icon(
-                                                  Icons.visibility,
-                                                  size: 18,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                const Text(
-                                                  '2067views',
-                                                  style:
-                                                      TextStyle(fontSize: 12),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                .map((tab) => Consumer(
+                      builder: (context, ref, child) {
+                        final newsState =
+                            ref.watch(getNewsByQueryProvider(tab));
+                        return newsState.when(
+                          data: (articles) {
+                            return ListView.builder(
+                              itemCount: articles.length,
+                              itemBuilder: (context, index) {
+                                final article = articles[index];
+                                if (article.title != "" &&
+                                    article.author != "" &&
+                                    article.publishedAt != null &&
+                                    article.urlToImage != null &&
+                                    article.content != null &&
+                                    article.description != "") {
+                                  return InkWell(
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        ArticleScreen.routeName,
+                                        arguments: article,
+                                      );
+                                    },
+                                    child: Row(
+                                      children: [
+                                        ImageContainer(
+                                          width: 80,
+                                          height: 80,
+                                          imageUrl: article.urlToImage!,
+                                          margin: const EdgeInsets.all(10),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                              return Container(
-                                child: const Text(
-                                  "エラー？",
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                              );
-                            }),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Container(
-                            decoration:
-                                const BoxDecoration(color: Colors.black),
-                            child: Text(e.toString()),
-                          );
-                        } else {
-                          return const Center(
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(tab.toLowerCase()),
+                                              Text(
+                                                article.title!,
+                                                maxLines: 2,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall!
+                                                    .copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.schedule,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    article.publishedAt!
+                                                        .split('T')
+                                                        .first,
+                                                    style: const TextStyle(
+                                                        fontSize: 12),
+                                                  ),
+                                                  const SizedBox(width: 20),
+                                                  const Icon(
+                                                    Icons.visibility,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  const Text(
+                                                    '2067views',
+                                                    style:
+                                                        TextStyle(fontSize: 12),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return Container();
+                              },
+                            );
+                          },
+                          loading: () => const Center(
                             child: SizedBox(
                               width: 100,
                               height: 100,
                               child: CircularProgressIndicator(),
                             ),
-                          );
-                        }
+                          ),
+                          error: (error, stackTrace) => Container(
+                            decoration:
+                                const BoxDecoration(color: Colors.black),
+                            child: Center(
+                              child: Text('Error: $error'),
+                            ),
+                          ),
+                        );
                       },
                     ))
                 .toList(),
@@ -279,122 +273,66 @@ class _CategoryNews extends StatelessWidget {
 }
 
 class _SeachedNews extends ConsumerWidget {
-  const _SeachedNews({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final searchQuery = ref.watch(searchQueryProvier);
+    final newsState = ref.watch(getNewsByQueryProvider(searchQuery));
+
     return SizedBox(
       height: MediaQuery.of(context).size.height,
-      child: FutureBuilder(
-        future: NewsService().getNewsByQuery(searchQuery),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            final articles = snapshot.data;
-            return Container(
-              decoration: const BoxDecoration(color: Colors.black),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: ListView.builder(
-                  itemCount: articles!.length,
-                  itemBuilder: (context, index) {
-                    final article = articles[index];
-                    if (article.title != "" &&
-                        article.author != "" &&
-                        article.publishedAt != "" &&
-                        article.urlToImage != null &&
-                        article.content != "" &&
-                        article.description != "") {
-                      return InkWell(
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            ArticleScreen.routeName,
-                            arguments: articles[index],
-                          );
-                        },
-                        child: Row(
-                          children: [
-                            ImageContainer(
-                              width: 80,
-                              height: 80,
-                              imageUrl: article.urlToImage!,
-                              margin: const EdgeInsets.all(10),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    article.title ?? "",
-                                    maxLines: 2,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall!
-                                        .copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.schedule,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        article.publishedAt!.split('T').first,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      const SizedBox(width: 20),
-                                      const Icon(
-                                        Icons.visibility,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      const Text(
-                                        '2067views',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      return Container();
-                    }
-                  },
+      child: newsState.when(
+        data: (articles) => ListView.builder(
+          itemCount: articles.length,
+          itemBuilder: (context, index) {
+            final article = articles[index];
+            if (article.title != "" && article.urlToImage != null) {
+              return InkWell(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    ArticleScreen.routeName,
+                    arguments: article,
+                  );
+                },
+                child: Row(
+                  children: [
+                    ImageContainer(
+                      width: 80,
+                      height: 80,
+                      imageUrl: article.urlToImage!,
+                      margin: const EdgeInsets.all(10),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(article.title ?? "", maxLines: 2),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.schedule, size: 18),
+                              const SizedBox(width: 5),
+                              Text(article.publishedAt!.split('T').first,
+                                  style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            );
-          } else if (snapshot.hasError) {
-            final error = snapshot.error;
-            String errorMessage = 'Error: $error';
-
-            return Container(
-              decoration: const BoxDecoration(color: Colors.black),
-              child: Text(errorMessage),
-            );
-          } else {
-            return Center(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                ),
-                width: 100,
-                height: 100,
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-        },
+              );
+            } else {
+              return Container();
+            }
+          },
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, stackTrace) => Text(
+          'Error: $e',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

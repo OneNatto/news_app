@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:news_app_ui/models/article_model.dart';
+import 'package:news_app_ui/provider/news_provider.dart';
 import 'package:news_app_ui/screens/screen.dart';
-import 'package:news_app_ui/services/news_service.dart';
 
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/custom_tag.dart';
 import '../widgets/drawer.dart';
 import '../widgets/image_container.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const routeName = '/';
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final newsState = ref.watch(getNewsProvider);
 
-class _HomeScreenState extends State<HomeScreen> {
-  final client = NewsService();
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -29,44 +26,37 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: const MyDrawer(),
       bottomNavigationBar: const BottomNavBar(index: 0),
       extendBodyBehindAppBar: true,
-      body: FutureBuilder(
-        future: client.getNews(),
-        builder: ((context, snapshot) {
-          if (snapshot.hasData) {
-            final List<Article> articles = snapshot.data!;
-            final headNews = articles.firstWhere(
-              (article) =>
-                  article.title != "" &&
-                  article.urlToImage != null &&
-                  article.description != "",
-              orElse: () => Article(),
-            );
+      body: newsState.when(
+        data: (articles) {
+          final headNews = articles.firstWhere(
+            (article) =>
+                article.title != null &&
+                article.urlToImage != null &&
+                article.description != null,
+            orElse: () => Article(),
+          );
 
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _NewsOfTheDay(article: headNews),
-                _BreakingNews(articles: articles),
-              ],
-            );
-          } else if (snapshot.hasError) {
-            final error = snapshot.error;
-            String errorMessage = 'Error: $error';
-
-            return Container(
-              decoration: const BoxDecoration(color: Colors.black),
-              child: Text(errorMessage),
-            );
-          } else {
-            return const Center(
-              child: SizedBox(
-                width: 100,
-                height: 100,
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-        }),
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _NewsOfTheDay(article: headNews),
+              _BreakingNews(articles: articles),
+            ],
+          );
+        },
+        loading: () => const Center(
+          child: SizedBox(
+            width: 100,
+            height: 100,
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        error: (error, stackTrace) => Container(
+          decoration: const BoxDecoration(color: Colors.black),
+          child: Center(
+            child: Text('Error: $error'),
+          ),
+        ),
       ),
     );
   }
